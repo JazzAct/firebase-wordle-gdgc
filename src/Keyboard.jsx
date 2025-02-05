@@ -12,7 +12,7 @@ const keyboard_keys = [
  *  @param {string[]} guesses
  *  @param {string} correctWord
  *  @returns {number}
- *  @description Returns 0 if a character is not in guess, 1 if it is in a guess but wrong, 2 if it is in both the guess and the correct word, and finally 3 if it's correct, and in the right place 
+ *  @description Checks if a character is in a guess and if so how correct it is
  * */
 const hasKeyBeenUsed = (key, guesses, correctWord) => {
     let used = 0
@@ -39,4 +39,39 @@ const hasKeyBeenUsed = (key, guesses, correctWord) => {
     return used
 }
 
+/**
+ *  @description Returns a keyboard that can be interacted with
+ *  @param {object} props
+ *  @param {(arg0: string) => void} props.handleKey
+ *  @param {string} props.correctWord
+ *  @param {string[]} props.pastGuesses
+ * */
+function Keyboard (props) {
+    return (
+    <div className="keyboard">
+          {keyboard_keys.map((row, rowId) => (
+            <div className="keyboard-row" key={rowId}>
+              {row.map((key, keyId) => {
+                return (
+                    <button 
+                        onClick={() => props.handleKey(key)}
+                        key={keyId}
+                        className={`
+                            keyboard-key 
+                            ${hasKeyBeenUsed(key, props.pastGuesses, props.correctWord) === 0 ? '': ''}
+                            ${hasKeyBeenUsed(key, props.pastGuesses, props.correctWord) === 1 ? 'key-wrong': ''}
+                            ${hasKeyBeenUsed(key, props.pastGuesses, props.correctWord) === 2 ? 'key-almost-correct': ''}
+                            ${hasKeyBeenUsed(key, props.pastGuesses, props.correctWord) === 3 ? 'key-correct': ''}
+                        `}
+                        >
+                        {key}
+                    </button>           
+                );
+              })}
+            </div>
+          ))}
+        </div>
+    )
+}
 
+export default Keyboard;

@@ -1,19 +1,103 @@
-import React, { useEffect } from 'react'
-import WordGrid from './WordGrid'
-
-import './App.css'
-import { useState } from 'react'
-import words from './random_words'
-
+import React, { useEffect, useState } from 'react';
+import WordGrid from './WordGrid';
+import Leaderboard from "./Leaderboard.jsx";
+import './App.css';
+import Keyboard from './Keyboard';
+import words from './random_words';
+import { db, collection, addDoc } from "./firebase"; // Firebase imports
 
 function App() {
-    
+    const [pastGuesses, setPastGuesses] = useState([]);
+    const [guess, setGuess] = useState("");
+    const [correctWord, setCorrectWord] = useState("");
+    const [playerName, setPlayerName] = useState("");
+    const [gameOver, setGameOver] = useState(false); // Changed from string to boolean
+    const [score, setScore] = useState(0);
+
+    const handleKey = (key) => {
+        setGuess((e) => {
+            if (e.length >= 4) {
+                setPastGuesses((p) => [...p, e + key]);
+                return "";
+            }
+            return e + key;
+        });
+    };
+
+    const backspaceKey = () => {
+        setGuess((e) => e.slice(0, -1));
+    };
+
+    useEffect(() => {
+        setCorrectWord(words[Math.floor(Math.random() * words.length)]);
+        
+        const handleKeyPress = (ev) => {
+            const letter = ev.key.toLowerCase();
+            if (ev.key === 'Backspace') {
+                backspaceKey();
+                return;
+            }
+            if (letter < "a" || letter > "z" || letter.length > 1) return;
+            handleKey(letter);
+        };
+
+        document.addEventListener("keydown", handleKeyPress);
+        return () => document.removeEventListener("keydown", handleKeyPress);
+    }, []);
+
+    // Function to save score in Firebase
+    const saveScore = async (name, attempts) => {
+        if (!name) return;
+        try {
+            await addDoc(collection(db, "leaderboard"), {
+                name,
+                score: 100 - attempts * 10, 
+                timestamp: new Date(),
+            });
+            alert("Score submitted!");
+        } catch (error) {
+            console.error("Error saving score:", error);
+        }
+    };
+
+    useEffect(() => {
+        const lastGuess = pastGuesses.at(-1);
+        if (lastGuess === correctWord) {
+            const finalScore = Math.max(100 - pastGuesses.length * 10, 0);
+            setScore(finalScore);
+            setGameOver(true);
+        }
+    }, [pastGuesses, correctWord]);
 
     return (
-        <div>
-            Hello, World!
-        </div>
-    )
+        <main>
+            <div>
+                <h1>Word Guessing Game</h1>
+            </div>
+
+            {!gameOver ? (
+                <>
+                    <WordGrid currentGuess={guess} guesses={pastGuesses} correctWord={correctWord} />
+                    <Keyboard handleKey={handleKey} correctWord={correctWord} pastGuesses={pastGuesses} />
+                </>
+            ) : (
+                <div>
+                    <h2>Game Over!</h2>
+                    <p>Your Score: {score}</p>
+                    <input
+                        type="text"
+                        placeholder="Enter your name"
+                        value={playerName}
+                        onChange={(e) => setPlayerName(e.target.value)}
+                    />
+                    <button onClick={() => saveScore(playerName, pastGuesses.length)}>Submit Score</button>
+                    <button onClick={() => window.location.reload()}>Play Again</button>
+                </div>
+            )}
+
+            <Leaderboard />
+        </main>
+    );
 }
 
 export default App;
