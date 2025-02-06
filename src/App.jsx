@@ -6,6 +6,8 @@ import Keyboard from './Keyboard';
 import words from './random_words';
 import { db, collection, addDoc } from "./firebase"; // Firebase imports
 
+const MAX_ATTEMPTS = 10; // Set max attempts limit
+
 function App() {
     const [pastGuesses, setPastGuesses] = useState([]);
     const [guess, setGuess] = useState("");
@@ -13,11 +15,15 @@ function App() {
     const [playerName, setPlayerName] = useState("");
     const [gameOver, setGameOver] = useState(false); // Changed from string to boolean
     const [score, setScore] = useState(0);
+    const [gameResult,setGameResult] = useState(""); // "win" or "lose"
 
     const handleKey = (key) => {
+        if (gameOver || pastGuesses.length >= MAX_ATTEMPTS) return; // Stop input if game is over
+
         setGuess((e) => {
             if (e.length >= 4) {
-                setPastGuesses((p) => [...p, e + key]);
+                const newGuess = e + key;
+                setPastGuesses((p) => [...p, newGuess]);
                 return "";
             }
             return e + key;
@@ -45,13 +51,29 @@ function App() {
         return () => document.removeEventListener("keydown", handleKeyPress);
     }, []);
 
+    useEffect(() => {
+        if (pastGuesses.length === 0) return;
+
+        const lastGuess = pastGuesses.at(-1);
+
+        if (lastGuess === correctWord) {
+            const finalScore = Math.max(110 - pastGuesses.length * 10, 0);
+            setScore(finalScore);
+            setGameOver(true);
+            setGameResult("win"); // Player won
+        } else if (pastGuesses.length >= MAX_ATTEMPTS) {
+            setGameOver(true);
+            setGameResult("lose"); // Player lost
+        }
+    }, [pastGuesses, correctWord]);
+
     // Function to save score in Firebase
     const saveScore = async (name, attempts) => {
         if (!name) return;
         try {
             await addDoc(collection(db, "leaderboard"), {
                 name,
-                score: 100 - attempts * 10, 
+                score: 110 - attempts * 10, 
                 timestamp: new Date(),
             });
             alert("Score submitted!");
@@ -59,15 +81,6 @@ function App() {
             console.error("Error saving score:", error);
         }
     };
-
-    useEffect(() => {
-        const lastGuess = pastGuesses.at(-1);
-        if (lastGuess === correctWord) {
-            const finalScore = Math.max(100 - pastGuesses.length * 10, 0);
-            setScore(finalScore);
-            setGameOver(true);
-        }
-    }, [pastGuesses, correctWord]);
 
     return (
         <main>
